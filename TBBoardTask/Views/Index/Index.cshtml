@@ -1,0 +1,168 @@
+﻿@model IEnumerable<TBBoardTask.Models.QuoteViewModel>
+@{
+    ViewBag.Title = "Index";
+}
+
+<div>
+    <div class="searchQuote work_container">
+        <div>
+            <h4>Найти цитаты от автора:</h4>
+            <input type="text" id="search" class="search"/>
+        </div>
+    </div>
+    
+
+    <div class="quote_section">
+        <h2>Таблица цитат</h2>
+        <table class="table">
+            <tr>
+                <th>Author</th>
+                <th>Category</th>
+                <th>Cdreated date</th>
+                <th>Text</th>
+                <th></th>
+            </tr>
+
+            @foreach (var item in Model)
+            {
+                <tr class="tr">
+                    <td class="td author">
+                        @item.Author
+                    </td>
+                    <td class="td category">
+                        @if (item.Category != null)
+                        {@item.Category.Name
+                        }
+                    </td>
+                    <td class="td createdAt">
+                        @item.CreatedAt
+                    </td>
+                    <td class="td text">
+                        @item.Text
+                    </td>
+                    <td class="td_delete">
+                        <button id="@item.Id" class="delete">delete</button>
+                    </td>
+                </tr>
+            }
+
+        </table>
+    </div>
+
+    <div class="addQoute work_container">
+        <div>
+            <h4>Добавить цитату:</h4>
+            <div><p>Author:</p><input type="text" class="add add_author" /></div>
+            <div><p>Category:</p><select id="categories"></select></div>
+            <div><p>Text:</p><textarea rows="4" cols="50" class="add add_text"></textarea></div>
+            <button id="addQuote">Добавить</button>
+        </div>
+    </div>
+</div>
+
+
+
+<script language="JavaScript" type="text/javascript" src="/Scripts/jquery-1.10.2.js"></script>
+<script>
+    $(function() {
+
+        $.ajax({
+            url: "@Url.Action("GetCategories")",
+            type: "GET",
+            contentType: "application/json; charset=utf-8",
+            dataType: "json",
+            error: function(response) {
+                alert(response.responseText);
+            },
+            success: function(response) {
+                var select = $("#categories");
+                $.each(response,
+                    function() {
+                        select.append("<option id = " +this.Id +" value=" +this.Name +">" +this.Name +"</option>");
+                    });
+            }
+        });
+
+        $("#search").keyup(function() {
+            if ($("#search").val().length >= 10) {
+                $("#search").addClass("error");
+                return;
+            } else if ($('#search').attr('class') === "search error") {
+                $("#search").removeClass('error');
+            }
+
+            var author = $("#search").val();
+            $.ajax({
+                url: "@Url.Action("GetQuoteListByAuthor")",
+                type: "GET",
+                data: { "author": author },
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                error: function(response) {
+                    alert(response.responseText);
+                },
+                success: function(response) {
+                    createTable(response);
+                }
+            });
+        });
+
+        $("#addQuote").click(function() {
+            var isValid = true;
+            $(".add_author,.add_text").each(function() {
+                if ($(this).val() === '') {
+                    $(this).addClass("error");
+                    isValid = false;
+                } 
+            });
+
+            if (!isValid)
+                return;
+
+            if ($(".add_text").val().length > 350) {
+                alert("текст цитаты не должен привешать 350 символов");
+                return;
+            }
+
+            var form = {
+                "author": $(".add_author").val(),
+                "text": $(".add_text").val(),
+                "categoryId": $("#categories option:selected").attr('id')
+            }
+            addQuote(form);
+        });
+
+        $(".table").on("click",".delete",function() {
+                deleteQuote($(this).attr("id"));
+            });
+
+        function addQuote(form) {
+            $.post("@Url.Action("AddQuote")", form, "json").success(function () { });
+            location.reload();
+        }
+
+        function deleteQuote(id) {
+            $.post("@Url.Action("DeleteQuote")", { "quoteId": id }, "json").success(function () { });
+            location.reload();
+        }
+
+        function createTable(quotes) {
+            $(".tr").remove();
+            $.each(quotes, function () {
+                var tr = document.createElement("tr");
+                $(tr).addClass("tr");
+                $(tr).append("<td class = 'td author'>" + this.Author + "</td>");
+                if (this.Category !== null)
+                    $(tr).append("<td class = 'td Category'>" + this.Category.name + "</td>");
+                else
+                    $(tr).append("<td class = 'td Category'></td>");
+                $(tr).append("<td class = 'td CreatedAt'>" + this.CreatedAt + "</td>");
+                $(tr).append("<td class = 'td Text'>" + this.Text + "</td>");
+
+                $(tr).append("<td class = 'td_delete'><button id =" + this.Id +" class='delete'>delete</button></td>");
+                $(".table").append(tr);
+            });
+        }
+    });
+
+</script>
